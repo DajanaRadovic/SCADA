@@ -1,0 +1,120 @@
+
+ReadCoilsFunction
+---------------------
+
+PackReuquest-> pakuje podatke potrebne 
+za izvrsavanje Modbus zahtjeva za citanje u niz bajtova.
+
+mdbRead-> instanca klase ModbusReadCommandParameters
+
+
+Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)mdbRead.TransactionId)), 0, mdbRequest, 0, 2) - 
+
+ Buffer.BlockCopy funkcija se koristi za kopiranje podataka 
+iz jednog niza bajtova u drugi niz bajtova. 
+Prvi argument funkcije predstavlja izvorni niz bajtova, 
+drugi argument označava indeks prvog bajta koji se kopira, 
+treći argument predstavlja ciljni niz bajtova, četvrti 
+argument označava indeks prvog bajta gde će kopirani
+ podaci biti smešteni, a peti argument predstavlja 
+broj bajtova koji će biti kopirani.
+ Dakle, ovaj 
+red koda kopira prvih 2 bajta koji predstavljaju 
+vrednost TransactionId u prva 2 bajta od mdbRequest niza bajtova.
+
+ mdbRequest[6] = mdbRead.UnitId;
+Ova linija koda dodeljuje vrednost UnitId 
+šestom bajtu mdbRequest niza bajtova.
+
+
+public override Dictionary<Tuple<PointType, ushort>, ushort> ParseResponse(byte[] response)
+
+Prvo se čita broj bajtova u odgovoru, koji se nalazi na 9. poziciji u 
+nizu bajtova response. Ovaj broj označava koliko je bajtova u odgovoru
+ zapravo podataka o registrima koje smo tražili u zahtevu.
+
+Zatim se kopiraju bajtovi koji predstavljaju očitane vrednosti 
+registara u novi niz bajtova bajtovi.
+
+Nakon toga se u petlji obrađuju očitane vrednosti registara.
+ U petlji se prvo iz bajta bajtovi[i] uzima jedan bit koji
+ predstavlja vrednost registra. Zatim se ta vrednost dodaje 
+u rečnik dict zajedno sa tipom registra (PointType.DIGITAL_OUTPUT)
+ i adresom registra (mdbRead.StartAddress + adresa).
+
+Nakon dodavanja vrednosti registra u rečnik,
+ bajt bajtovi[i] se pomeri u desno za jedan bit 
+da bi se u narednom koraku uzeo sledeći bit i 
+obrađena njegova vrednost. Brojač adresa se
+ povećava za jedan na svakoj iteraciji petlje 
+kako bi se odredila adresa sledećeg registra.
+
+Ako je obrađeno sedam bitova, tj. ako se brojač 
+j u petlji deli bez ostatka sa 7, indeks niza 
+bajtova i se povećava za 1 kako bi se uzela naredna grupa bitova.
+
+Na kraju se vraća rečnik dict koji sadrži 
+sve očitane vrednosti registara.
+
+
+ReadDiscreteInputsFunction
+----------------------------
+sve je isto kao i gore samo ovdje ide DIGITAL_INPUT
+
+DIGITAL_OUTPUT - digitalna izlazna tacka
+DIGITAL_INPUT - digitalna ulazna tacka
+
+
+ReadHoldingRegistersFunction
+-----------------------------
+
+Broj primljenih bajtova se nalazi u osmom bajtu odgovora.
+
+Nakon toga se kreiraju bajtovi niza i popunjavaju se 
+vrijednostima odgovora koji počinje od devetog bajta.
+
+Vrijednost analognog izlaza se nalazi u dva bajta 
+koji su primljeni u obrnutom redoslijedu. Prvo se 
+kreira novi niz bajtova sa obrnutim redoslijedom 
+primljenih bajtova, a zatim se ova vrijednost 
+pretvara u ushort koristeći BitConverter.ToUInt16 metodu.
+
+Na kraju, adresa se povećava za jedan, a index se 
+povećava za dva kako bi se nastavilo sa obradom sljedećih vrijednosti.
+
+Na kraju, vraća se Dictionary objekat sa adresa
+ i odgovarajućim vrijednostima.
+
+ReadInputRegistersFunction
+-----------------------------
+Sve isto samo je ovdje Analog_input
+
+
+
+WriteSingleRegisterFunction
+-------------------------------
+
+Ovde se radi o kodu za parsiranje odgovora modbus 
+protokola nakon upisa vrednosti na određenu adresu. 
+Metoda ParseResponse se poziva nakon slanja komande 
+za upis i njen zadatak je da izvuče informaciju o tome da li je upis 
+uspešno obavljen.
+U ovom slučaju, kada se upisuje analogni izlaz, 
+vrednost koja se upisuje se čita iz odgovora i
+dodaje se u rečnik kao vrednost za odgovarajuću adresu.
+
+
+WriteSingleCoilFunction
+-------------------------
+ ovaj kod kreira novi rečnik i postavlja ključ kao Tuple<PointType, ushort>, 
+gde je PointType DIGITAL_OUTPUT, 
+a vrednost je adresa ulaza na koju se odnosi odgovor. 
+Vrednost registra koji je upisan se zatim pretvara iz 
+niza bajtova u ushort format pomoću BitConverter.ToUInt16 metode, 
+nakon čega se dodaje u rečnik. Na kraju se rečnik vraća kao
+ rezultat parsiranja.
+
+
+
+
+
